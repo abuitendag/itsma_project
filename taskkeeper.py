@@ -3,8 +3,8 @@ import requests
 
 # class that makes api calls
 class TaskKeeper:
-    def __init__(self, api_url):
-        self.api_url = api_url
+    def __init__(self, base_url):
+        self.base_url = base_url
 
 # fetch data from api
     def fetch_tasks(self, cache_key=None):
@@ -14,12 +14,12 @@ class TaskKeeper:
             return response.json()['tasks']
         except requests.exceptions.RequestException as e:
             st.error(f"Error fetching tasks: {e}")
-            return []
+            return None
 
 # create new task, post request to api
-    def create_task(self, title, description, completed):
+    def create_task(self, title, description):
         try:
-            data = {'title': title, 'description': description,'completed': completed}
+            data = {'title': title, 'description': description}
             response = requests.post(self.base_url, json=data)
             response.raise_for_status()
             return response.json()
@@ -56,6 +56,12 @@ class TaskKeeper:
         st.markdown("<h1 style='text-align: center; '>Task Keeper</h1>", unsafe_allow_html=True)
         st.write("---")
         
+        tasks = self.fetch_tasks()
+        if tasks is None:
+            st.error("Unable to connect to the API. Please check your connection.")
+            if st.button('Refresh'):
+                tasks = self.fetch_tasks()  # Retry fetching tasks on button click
+        
         # streamlit columns 
         col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 
@@ -64,10 +70,9 @@ class TaskKeeper:
             st.header('Add new task')
             new_task_title = st.text_input('Title', key='new_task_title')
             new_task_description = st.text_area('Description', key='new_task_description')
-            new_task_completed = st.checkbox('Completed', key='new_task_completed')
             
             if st.button('Add'):
-                result = self.create_task(new_task_title, new_task_description,new_task_completed)
+                result = self.create_task(new_task_title, new_task_description)
                 if result:
                     st.success('Task added')
                     # invalidate cache by calling fetch_tasks with a different cache_key
@@ -122,6 +127,6 @@ class TaskKeeper:
         
 # create instance of class and run
 if __name__ == '__main__':
-    API_URL = 'http://localhost:5000/api/tasks'
-    task_manager = TaskKeeper(API_URL)
+    BASE_URL = 'http://localhost:5000/api/tasks'
+    task_manager = TaskKeeper(BASE_URL)
     task_manager.run()
